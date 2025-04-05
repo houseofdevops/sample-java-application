@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: simplejavaapplication 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simplejavaapplication
+  template:
+    metadata:
+      labels:
+        app: simplejavaapplication 
+    spec:
+      containers:
+        - name: simplejavaapplication 
+          image: registrydemofeb2025.azurecr.io/simplejavaapplication
+          ports:
+          - containerPort: 80
