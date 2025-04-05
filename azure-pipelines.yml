@@ -1,0 +1,98 @@
+trigger:
+- main
+
+variables:
+  dockerRegistryServiceConnection: '7319f7ae-88f5-43ab-ba87-7deb21f59d50'
+  imageRepository: 'simplejavaapplication'
+  containerRegistry: 'registrydemofeb2025.azurecr.io'
+  dockerfilePath: '**/Dockerfile'
+  tag: '$(Build.BuildId)'
+  imagePullSecret: 'registrydemofeb202520668390-auth'
+  vmImageName: 'ubuntu-latest'  # not used since we're using self-hosted
+
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: Build
+    displayName: Build and Push Docker Image
+    pool:
+      name: demobatchfeb25
+    steps:
+    - checkout: self
+
+    - task: Maven@3
+      displayName: Maven Build
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'package'
+        options: '-DskipTests'
+
+    - task: Docker@2
+      displayName: Build and Push Docker Image
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+
+    - task: PublishPipelineArtifact@1
+      displayName: Publish Kubernetes Manifests
+      inputs:
+        targetPath: 'manifests'
+        artifact: 'manifests'
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+
+  jobs:
+  - deployment: DeployToAKS
+    displayName: Deploy to AKS
+    pool:
+      name: demobatchfeb25
+    environment: 'simplejavaapplication.default'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: Download Published Manifests
+            inputs:
+              artifact: 'manifests'
+              path: '$(Pipeline.Workspace)/manifests'
+
+          # Install kubectl
+          - task: KubernetesInstaller@0
+            displayName: Install Kubernetes CLI
+            inputs:
+              kubectlVersion: 'latest'
+
+          # Install Helm
+          - task: HelmInstaller@1
+            displayName: Install Helm CLI
+            inputs:
+              helmVersionToInstall: '3.12.3'
+
+          # Create ACR imagePullSecret
+          - task: KubernetesManifest@0
+            displayName: Create imagePullSecret
+            inputs:
+              action: createSecret
+              secretName: $(imagePullSecret)
+              dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
+
+          # Deploy app
+          - task: KubernetesManifest@0
+            displayName: Deploy to AKS
+            inputs:
+              action: deploy
+              manifests: |
+                $(Pipeline.Workspace)/manifests/deployment.yml
+                $(Pipeline.Workspace)/manifests/service.yml
+              imagePullSecrets: |
+                $(imagePullSecret)
+              containers: |
+                $(containerRegistry)/$(imageRepository):$(tag)
