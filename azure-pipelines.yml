@@ -64,19 +64,18 @@ stages:
               artifact: 'manifests'
               path: '$(Pipeline.Workspace)/manifests'
 
-          # Install kubectl
-          - task: KubernetesInstaller@0
-            displayName: Install Kubernetes CLI
-            inputs:
-              kubectlVersion: 'latest'
+          - script: |
+              echo "Installing kubectl..."
+              sudo curl -LO "https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+              sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+              kubectl version --client
+            displayName: Install kubectl
 
-          # Install Helm
           - task: HelmInstaller@1
             displayName: Install Helm CLI
             inputs:
               helmVersionToInstall: '3.12.3'
 
-          # Create ACR imagePullSecret
           - task: KubernetesManifest@0
             displayName: Create imagePullSecret
             inputs:
@@ -84,7 +83,6 @@ stages:
               secretName: $(imagePullSecret)
               dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
 
-          # Deploy app
           - task: KubernetesManifest@0
             displayName: Deploy to AKS
             inputs:
