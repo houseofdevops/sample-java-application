@@ -1,6 +1,11 @@
-apiVersion: v2
-name: multitierbankapp
-description: A Helm chart for multitier Java application
-type: application
-version: 0.1.0
-appVersion: "1.0"
+appName: simplejavaapplication
+replicaCount: 1
+image:
+  repository: registrydemofeb2025.azurecr.io/simplejavaapplication
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
