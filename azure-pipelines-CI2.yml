@@ -1,0 +1,43 @@
+trigger:
+- sample-Java2
+
+variables:
+  dockerRegistryServiceConnection: '7f97900d-05c4-43a8-a055-c2006520f419'
+  imageRepository: 'javaapplication'
+  containerRegistry: 'registrydemofeb2025.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+  appName: 'multitierbankapp'
+  JAVA_HOME_17_X64: '/usr/lib/jvm/java-17-openjdk-amd64'
+  JAVA_HOME: '/usr/lib/jvm/java-17-openjdk-amd64'
+  MAVEN_HOME: '/usr/share/maven'
+  PATH: '/usr/lib/jvm/java-17-openjdk-amd64/bin:/usr/share/maven/bin:/usr/bin:$(PATH)'
+
+pool:
+  name: demobatchfeb25  # Replace with your self-hosted agent pool name
+
+stages:
+- stage: BuildAndPush
+  displayName: Build, Dockerize, and Push to ACR
+  jobs:
+  - job: BuildAndPush
+    displayName: Build and Push Docker Image
+    steps:
+    - checkout: self
+
+    - task: Maven@3
+      displayName: 'Build Java Project with Maven'
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean package'
+        options: '-DskipTests'
+
+    - task: Docker@2
+      displayName: 'Build and Push Docker Image to ACR'
+      inputs:
+        command: 'buildAndPush'
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
