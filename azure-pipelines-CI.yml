@@ -1,5 +1,5 @@
 trigger:
-- main
+- sampleJava
 
 variables:
   dockerRegistryServiceConnection: '7f97900d-05c4-43a8-a055-c2006520f419'
